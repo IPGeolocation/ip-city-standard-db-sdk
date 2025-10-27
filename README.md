@@ -17,7 +17,7 @@ Add the following dependency in `pom.xml` file to use the IP City DB Java SDK.
 
 ```maven
 <dependency>
-    <groupId>io.dbipgeolocation</groupId>
+    <groupId>io.ipgeolocation</groupId>
     <artifactId>ip-city-std-db</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -25,7 +25,7 @@ Add the following dependency in `pom.xml` file to use the IP City DB Java SDK.
 
 ### Gradle
 ```gradle
-implementation 'io.dbipgeolocation:ip-city-std-db:1.0.0'
+implementation 'io.ipgeolocation:ip-city-std-db:1.0.0'
 ```
 
 ### Ivy
@@ -33,7 +33,7 @@ implementation 'io.dbipgeolocation:ip-city-std-db:1.0.0'
 Add the following dependency code in `ivy.xml` file to use the IP City DB Java SDK.
 
 ```ivy
-<dependency org="io.dbipgeolocation" name="ip-city-std-db" rev="1.0.0"/>
+<dependency org="io.ipgeolocation" name="ip-city-std-db" rev="1.0.0"/>
 ```
 
 ## Basic Usage
