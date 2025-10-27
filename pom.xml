@@ -6,7 +6,7 @@
 
     <groupId>io.ipgeolocation</groupId>
     <artifactId>ip-city-std-db</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>ip-city-standard-db-sdk</name>
