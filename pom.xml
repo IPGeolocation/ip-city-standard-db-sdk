@@ -28,11 +28,11 @@
         </developer>
     </developers>
 
-<!--    <scm>-->
-<!--        <connection>scm:git:git://github.com:IPGeolocation/ip-geolocation-api-java-sdk.git</connection>-->
-<!--        <developerConnection>scm:git:ssh://github.com:IPGeolocation/ip-geolocation-api-java-sdk.git</developerConnection>-->
-<!--        <url>https://github.com/IPGeolocation/ip-geolocation-api-java-sdk/tree/master</url>-->
-<!--    </scm>-->
+    <scm>
+        <connection>scm:git:git://github.com:IPGeolocation/ip-city-standard-db-sdk.git</connection>
+        <developerConnection>scm:git:ssh://github.com:IPGeolocation/ip-city-standard-db-sdk.git</developerConnection>
+        <url>https://github.com/IPGeolocation/ip-city-standard-db-sdk/tree/main</url>
+    </scm>
 
 
     <distributionManagement>
