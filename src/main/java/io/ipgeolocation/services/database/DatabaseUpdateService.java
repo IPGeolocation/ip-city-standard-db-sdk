@@ -99,7 +99,7 @@ public class DatabaseUpdateService {
 
     if (!Files.exists(Path.of(workingDirectory))) {
       LOG.log(System.Logger.Level.ERROR,
-              "{0} directory does not exist, creating it.",
+              "{0} directory does not exist, Please create it.",
               workingDirectory);
       return;
     }
