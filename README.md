@@ -19,13 +19,13 @@ Add the following dependency in `pom.xml` file to use the IP City DB Java SDK.
 <dependency>
     <groupId>io.ipgeolocation</groupId>
     <artifactId>ip-city-std-db</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
 ### Gradle
 ```gradle
-implementation 'io.ipgeolocation:ip-city-std-db:1.0.1'
+implementation 'io.ipgeolocation:ip-city-std-db:1.0.2'
 ```
 
 ### Ivy
@@ -33,7 +33,7 @@ implementation 'io.ipgeolocation:ip-city-std-db:1.0.1'
 Add the following dependency code in `ivy.xml` file to use the IP City DB Java SDK.
 
 ```ivy
-<dependency org="io.ipgeolocation" name="ip-city-std-db" rev="1.0.1"/>
+<dependency org="io.ipgeolocation" name="ip-city-std-db" rev="1.0.2"/>
 ```
 
 ## Basic Usage
@@ -110,7 +110,7 @@ You can either:
   Download, extract, and place the database files in the working directory specified in your JSON configuration file.
 
 - **Automatically Download Files Using SDK**:
-  Use the SDK to download the database files automatically. The SDK will use the JSON config file to decide where to place DB files. Here's the code to download the database:
+  The SDK checks the download before replacing `db-ip-location.mmdb` in your working directory. If the update fails, it keeps your existing database. Other files in that folder stay as they are.
 
   ```java
   DatabaseUpdateService databaseUpdateService = DatabaseUpdateService.getInstance();

@@ -1,0 +1,33 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the commit under test
+        run: |
+          git init --quiet
+          git fetch --no-tags --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "$GITHUB_SHA"
+          git checkout --quiet --detach "$GITHUB_SHA"
+      - name: Run tests on Java 21
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            export PATH="$(cygpath -u "$JAVA_HOME")/bin:$PATH"
+          else
+            export PATH="$JAVA_HOME/bin:$PATH"
+          fi
+          java -version
+          mvn -B -ntp test
