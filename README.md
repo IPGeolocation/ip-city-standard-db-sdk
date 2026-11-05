@@ -19,13 +19,13 @@ Add the following dependency in `pom.xml` file to use the IP City DB Java SDK.
 <dependency>
     <groupId>io.ipgeolocation</groupId>
     <artifactId>ip-city-std-db</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
 ### Gradle
 ```gradle
-implementation 'io.ipgeolocation:ip-city-std-db:1.0.1'
+implementation 'io.ipgeolocation:ip-city-std-db:1.0.2'
 ```
 
 ### Ivy
@@ -33,7 +33,7 @@ implementation 'io.ipgeolocation:ip-city-std-db:1.0.1'
 Add the following dependency code in `ivy.xml` file to use the IP City DB Java SDK.
 
 ```ivy
-<dependency org="io.ipgeolocation" name="ip-city-std-db" rev="1.0.1"/>
+<dependency org="io.ipgeolocation" name="ip-city-std-db" rev="1.0.2"/>
 ```
 
 ## Basic Usage
@@ -62,28 +62,17 @@ Follow the steps below to consume the **IP City database**:
 
 ### For Windows
 
-Follow the steps below to consume the **IP City database**:
+In PowerShell, create the settings folder:
+```powershell
+New-Item -ItemType Directory -Force "$HOME\conf\ipgeolocation"
+```
 
-- Create `C:\conf\ipgeolocation` folders in the `C` or any other drive of your choice.
+Save `database-config.json` in that folder. For example, if your home folder is `C:\Users\Alex`:
+```json
+{"workingDirectory": "C:/Users/Alex/conf/ipgeolocation", "apiKey": "YOUR_API_KEY"}
+```
 
-    ```bash
-    C:
-    mkdir conf\ipgeolocation
-    ```
-
-- Create `database-config.json` file in the `C:\conf\ipgeolocation` directory.
-  ```bash
-  cd conf\ipgeolocation
-  copy nul database-config.json
-  ```
-
-* Write the following JSON config values in it (You can use any editor of your choice like `nano` or `vim`.):
-  ```json 
-  {"workingDirectory": "C:\\conf\\ipgeolocation","apiKey": "YOUR_API_KEY"}
-  ```
-* Against `workingDirectory` key, replace `C:\\conf\\ipgeolocation` value with the path of the directory where you want
-  to place the database files.
-* Against `apiKey` key, replace `YOUR_API_KEY` value with the API key from your database subscription.
+Use your own home folder and your IPGeolocation.io database subscription key. To store the database elsewhere, set `workingDirectory` to a folder that already exists.
 
 ### Response in Multiple Languages
 
@@ -110,7 +99,9 @@ You can either:
   Download, extract, and place the database files in the working directory specified in your JSON configuration file.
 
 - **Automatically Download Files Using SDK**:
-  Use the SDK to download the database files automatically. The SDK will use the JSON config file to decide where to place DB files. Here's the code to download the database:
+  The SDK checks the download before replacing `db-ip-location.mmdb` in your working directory. If the update fails, it keeps your existing database. Other files in that folder stay as they are.
+
+If your Linux image only has BusyBox, install `coreutils` or `acl` so the updater can keep the existing database’s file permissions.
 
   ```java
   DatabaseUpdateService databaseUpdateService = DatabaseUpdateService.getInstance();
@@ -237,8 +228,6 @@ The SDK throws the following exceptions:
 
 **3. InvalidIPAddressException, IPNotFoundException, BogonIPException**:
 
-- These exceptions are not thrown in bulk geolocation lookup. If an IP address is invalid, not found, or a bogon IP, the
-  corresponding geolocation object will not be included in the list.
-  Suppose that you query for 3 IP addresses and only 2 are valid, then the list will contain only 2 geolocation objects.
+- Bulk results stay in the same order as the input. If an IP is invalid, reserved, or not found, its place in the list is `null`. For example, three IPs still give three entries. A blank or `null` input throws `IllegalArgumentException`.
 
 

@@ -1,0 +1,59 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the commit under test
+        run: |
+          git init --quiet
+          git fetch --no-tags --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "$GITHUB_SHA"
+          git checkout --quiet --detach "$GITHUB_SHA"
+      - name: Install Linux ACL test tools
+        if: runner.os == 'Linux'
+        run: |
+          if ! command -v setfacl >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y acl
+          fi
+      - name: Prepare Maven
+        run: python3 .github/workflows/prepare-maven.py
+      - name: Run tests on Java 21
+        run: |
+          jdk="JAVA_HOME_21_${RUNNER_ARCH}"
+          export JAVA_HOME="${!jdk}"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            export PATH="$(cygpath -u "$JAVA_HOME")/bin:$PATH"
+          else
+            export PATH="$JAVA_HOME/bin:$PATH"
+          fi
+          java -version
+          mvn -B -ntp test
+      - name: Check Windows setup instructions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $settings = New-Item -ItemType Directory -Force "$HOME\conf\ipgeolocation"
+          $config = Join-Path $settings 'database-config.json'
+          $database = Join-Path $settings 'db-ip-location.mmdb'
+          if ((Test-Path $config) -or (Test-Path $database)) { throw 'Expected a clean runner profile' }
+          $example = (Get-Content -Raw README.md) -split '### For Windows', 2
+          $json = [regex]::Match($example[1], '(?s)```json\s*(.*?)\s*```').Groups[1].Value
+          $json.Replace('C:/Users/Alex', $HOME.Replace('\', '/')) | Set-Content -Encoding utf8NoBOM $config
+          Copy-Item src/test/resources/city-old.mmdb $database
+          $report = [xml](Get-Content -Raw target/surefire-reports/TEST-io.ipgeolocation.services.database.LookupCompatibilityTest.xml)
+          $classpath = ($report.testsuite.properties.property | Where-Object name -eq 'java.class.path').value
+          & "$env:JAVA_HOME_21_X64\bin\java.exe" -cp $classpath io.ipgeolocation.services.database.LookupCompatibilityTest
+          exit $LASTEXITCODE
