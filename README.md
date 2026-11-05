@@ -101,6 +101,8 @@ You can either:
 - **Automatically Download Files Using SDK**:
   The SDK checks the download before replacing `db-ip-location.mmdb` in your working directory. If the update fails, it keeps your existing database. Other files in that folder stay as they are.
 
+If your Linux image only has BusyBox, install `coreutils` or `acl` so the updater can keep the existing database’s file permissions.
+
   ```java
   DatabaseUpdateService databaseUpdateService = DatabaseUpdateService.getInstance();
   databaseUpdateService.downloadDatabaseFromDatabaseDownloadAPI();
