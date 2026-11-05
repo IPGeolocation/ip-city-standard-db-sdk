@@ -1,9 +1,5 @@
 package io.ipgeolocation.services.database;
 
-import com.maxmind.db.Reader;
-import io.ipgeolocation.models.db.IPCityPlace;
-import com.maxmind.db.InvalidNetworkException;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +39,8 @@ final class DatabaseInstaller {
       }
       verify(archive, publicKey, signature);
       extractDatabase(archive, candidate);
-      validateDatabase(candidate);
+      if (System.getProperty("os.name").startsWith("Windows")) DatabaseVerifier.verifyInChild(candidate);
+      else DatabaseVerifier.verify(candidate);
       Path target = directory.resolve(DATABASE);
       preserveAccess(target, candidate);
       Files.move(candidate, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
@@ -136,21 +133,6 @@ final class DatabaseInstaller {
           throw new ZipException("Incomplete database entry.");
         }
       }
-    }
-  }
-
-  private static void validateDatabase(Path candidate) throws IOException {
-    try (Reader reader = new Reader(candidate.toFile(), Reader.FileMode.MEMORY_MAPPED)) {
-      var networks = reader.networks(IPCityPlace.class);
-      for (int i = 0; i < 4096 && networks.hasNext(); i++) {
-        IPCityPlace place = networks.next().getData();
-        if (place != null && place.getLocation() != null && place.getLocation().getCity() != null &&
-            place.getLocation().getCountry() != null && place.getLocation().getCountry().getCode2() != null &&
-            place.getTimeZone() != null) return;
-      }
-      throw new IOException("The archive does not contain a city database.");
-    } catch (InvalidNetworkException e) {
-      throw new IOException("Invalid database network.", e);
     }
   }
 

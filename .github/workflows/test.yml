@@ -41,3 +41,19 @@ jobs:
           fi
           java -version
           mvn -B -ntp test
+      - name: Check Windows setup instructions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $settings = New-Item -ItemType Directory -Force "$HOME\conf\ipgeolocation"
+          $config = Join-Path $settings 'database-config.json'
+          $database = Join-Path $settings 'db-ip-location.mmdb'
+          if ((Test-Path $config) -or (Test-Path $database)) { throw 'Expected a clean runner profile' }
+          $example = (Get-Content -Raw README.md) -split '### For Windows', 2
+          $json = [regex]::Match($example[1], '(?s)```json\s*(.*?)\s*```').Groups[1].Value
+          $json.Replace('C:/Users/Alex', $HOME.Replace('\', '/')) | Set-Content -Encoding utf8NoBOM $config
+          Copy-Item src/test/resources/city-old.mmdb $database
+          $report = [xml](Get-Content -Raw target/surefire-reports/TEST-io.ipgeolocation.services.database.LookupCompatibilityTest.xml)
+          $classpath = ($report.testsuite.properties.property | Where-Object name -eq 'java.class.path').value
+          & "$env:JAVA_HOME_21_X64\bin\java.exe" -cp $classpath io.ipgeolocation.services.database.LookupCompatibilityTest
+          exit $LASTEXITCODE

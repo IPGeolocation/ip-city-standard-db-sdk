@@ -62,28 +62,17 @@ Follow the steps below to consume the **IP City database**:
 
 ### For Windows
 
-Follow the steps below to consume the **IP City database**:
+In PowerShell, create the settings folder:
+```powershell
+New-Item -ItemType Directory -Force "$HOME\conf\ipgeolocation"
+```
 
-- Create `C:\conf\ipgeolocation` folders in the `C` or any other drive of your choice.
+Save `database-config.json` in that folder. For example, if your home folder is `C:\Users\Alex`:
+```json
+{"workingDirectory": "C:/Users/Alex/conf/ipgeolocation", "apiKey": "YOUR_API_KEY"}
+```
 
-    ```bash
-    C:
-    mkdir conf\ipgeolocation
-    ```
-
-- Create `database-config.json` file in the `C:\conf\ipgeolocation` directory.
-  ```bash
-  cd conf\ipgeolocation
-  copy nul database-config.json
-  ```
-
-* Write the following JSON config values in it (You can use any editor of your choice like `nano` or `vim`.):
-  ```json 
-  {"workingDirectory": "C:\\conf\\ipgeolocation","apiKey": "YOUR_API_KEY"}
-  ```
-* Against `workingDirectory` key, replace `C:\\conf\\ipgeolocation` value with the path of the directory where you want
-  to place the database files.
-* Against `apiKey` key, replace `YOUR_API_KEY` value with the API key from your database subscription.
+Use your own home folder and your IPGeolocation.io database subscription key. To store the database elsewhere, set `workingDirectory` to a folder that already exists.
 
 ### Response in Multiple Languages
 
