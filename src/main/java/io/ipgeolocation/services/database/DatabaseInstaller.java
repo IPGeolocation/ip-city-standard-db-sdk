@@ -19,7 +19,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.zip.*;
 
@@ -141,9 +140,7 @@ final class DatabaseInstaller {
   }
 
   private static void validateDatabase(Path candidate) throws IOException {
-    var mode = System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("windows")
-        ? Reader.FileMode.MEMORY : Reader.FileMode.MEMORY_MAPPED;
-    try (Reader reader = new Reader(candidate.toFile(), mode)) {
+    try (Reader reader = new Reader(candidate.toFile(), Reader.FileMode.MEMORY_MAPPED)) {
       var networks = reader.networks(IPCityPlace.class);
       for (int i = 0; i < 4096 && networks.hasNext(); i++) {
         IPCityPlace place = networks.next().getData();

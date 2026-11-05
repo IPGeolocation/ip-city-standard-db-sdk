@@ -237,8 +237,6 @@ The SDK throws the following exceptions:
 
 **3. InvalidIPAddressException, IPNotFoundException, BogonIPException**:
 
-- These exceptions are not thrown in bulk geolocation lookup. If an IP address is invalid, not found, or a bogon IP, the
-  corresponding geolocation object will not be included in the list.
-  Suppose that you query for 3 IP addresses and only 2 are valid, then the list will contain only 2 geolocation objects.
+- Bulk results stay in the same order as the input. If an IP is invalid, reserved, or not found, its place in the list is `null`. For example, three IPs still give three entries. A blank or `null` input throws `IllegalArgumentException`.
 
 

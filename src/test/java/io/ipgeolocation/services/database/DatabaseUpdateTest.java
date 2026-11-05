@@ -225,6 +225,41 @@ class DatabaseUpdateTest {
     checkFiles();
   }
 
+  @Test void installsADatabaseLargerThanTheAvailableHeap() throws Exception {
+    byte[] db = fixture("city-new");
+    byte[] marker = {(byte) 0xab, (byte) 0xcd, (byte) 0xef};
+    int metadata = -1;
+    for (int i = db.length - 14; i >= 0; i--) {
+      if (db[i] == marker[0] && db[i+1] == marker[1] && db[i+2] == marker[2]) { metadata = i; break; }
+    }
+    assertTrue(metadata > 0);
+    var bytes = new ByteArrayOutputStream();
+    try (var zip = new ZipOutputStream(bytes)) {
+      zip.putNextEntry(new ZipEntry(DB));
+      zip.write(db, 0, metadata);
+      byte[] zeros = new byte[64 * 1024];
+      for (int i = 0; i < 768; i++) zip.write(zeros);
+      zip.write(db, metadata, db.length - metadata);
+      zip.closeEntry();
+    }
+    signed(bytes.toByteArray(), rsa);
+    Path java = Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java");
+    var command = new ProcessBuilder(java.toString(), "-Xmx32m", "-cp", System.getProperty("java.class.path"),
+        DatabaseUpdateTest.class.getName(), folder.toString(), origin).redirectErrorStream(true);
+    command.environment().put("IPGEO_TEST_TOKEN", token);
+    var child = command.start();
+    String output;
+    try (var in = child.getInputStream()) { output = new String(in.readAllBytes(), UTF_8); }
+    assertEquals(0, child.waitFor(), output);
+    assertEquals(db.length + (48L << 20), Files.size(folder.resolve(DB)));
+    assertEquals("Newtown", installedCity());
+    checkFiles();
+  }
+
+  public static void main(String[] args) throws Exception {
+    DatabaseInstaller.update(Path.of(args[0]), System.getenv("IPGEO_TEST_TOKEN"), args[1]);
+  }
+
   @Test void boundsStreamingWithoutWritingExcessBytes() throws Exception {
     byte[] input = new byte[65537];
     var sink = new ByteArrayOutputStream();
