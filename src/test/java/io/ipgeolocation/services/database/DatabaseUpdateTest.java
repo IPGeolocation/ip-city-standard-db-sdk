@@ -12,7 +12,7 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.attribute.*;
 import java.security.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -143,6 +143,49 @@ class DatabaseUpdateTest {
     assertEquals(List.of("key", "signature", "archive"), requests);
     if (posix) assertEquals(PosixFilePermissions.fromString("rw-r-----"), Files.getPosixFilePermissions(folder.resolve(DB)));
     checkFiles();
+  }
+
+  @Test void keepsCustomAccessRulesWhenReplacingTheDatabase() throws Exception {
+    Path db = folder.resolve(DB);
+    switch (System.getProperty("os.name")) {
+      case "Mac OS X" -> {
+        tool("/bin/chmod", "+a", "user:_www deny read", db.toString());
+        tool("/bin/chmod", "+ai", "group:staff allow readattr", db.toString());
+        List<String> before = tool("/bin/ls", "-lde", db.toString()).lines().skip(1).toList();
+        assertEquals(2, before.size());
+        update();
+        assertEquals(before, tool("/bin/ls", "-lde", db.toString()).lines().skip(1).toList());
+      }
+      case "Linux" -> {
+        Assumptions.assumeTrue(Files.isExecutable(Path.of("/usr/bin/setfacl")), "Requires Linux ACL utilities");
+        tool("/usr/bin/setfacl", "-m", "u:12345:r--,g::---,o::---", db.toString());
+        String before = tool("/usr/bin/getfacl", "-cpn", db.toString());
+        assertTrue(before.contains("user:12345:r--"));
+        update();
+        assertEquals(before, tool("/usr/bin/getfacl", "-cpn", db.toString()));
+      }
+      default -> {
+        var acl = Files.getFileAttributeView(db, AclFileAttributeView.class);
+        Assumptions.assumeTrue(acl != null, "Requires a filesystem with access rules");
+        var entries = new ArrayList<>(acl.getAcl());
+        entries.add(0, AclEntry.newBuilder().setType(AclEntryType.ALLOW)
+            .setPrincipal(acl.getOwner()).setPermissions(AclEntryPermission.READ_NAMED_ATTRS).build());
+        acl.setAcl(entries);
+        var before = acl.getAcl();
+        update();
+        assertEquals(before, acl.getAcl());
+      }
+    }
+    assertEquals("Newtown", installedCity());
+    checkFiles();
+  }
+
+  private String tool(String... command) throws Exception {
+    var child = new ProcessBuilder(command).redirectErrorStream(true).start();
+    String result;
+    try (var out = child.getInputStream()) { result = new String(out.readAllBytes(), UTF_8); }
+    assertEquals(0, child.waitFor(), result);
+    return result;
   }
 
   @ParameterizedTest @ValueSource(strings = {"key", "signature", "archive", "redirect key", "redirect signature", "redirect archive", "bad key", "oversized proof", "bad signature",

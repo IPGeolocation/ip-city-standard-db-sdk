@@ -18,12 +18,15 @@ import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.zip.*;
 
 final class DatabaseInstaller {
   static final String DATABASE = "db-ip-location.mmdb";
   private static final long MAX_ARCHIVE = 4L << 30;
+  private static final Pattern MAC_ACL = Pattern.compile("^ *[0-9]+: (.+?) (inherited )?(allow|deny) (.+)$");
   private static final int MAX_PROOF = 16 * 1024;
 
   private DatabaseInstaller() {}
@@ -73,7 +76,8 @@ final class DatabaseInstaller {
       long length = connection.getContentLengthLong();
       if (length > limit) throw new IOException("Database download exceeds the size limit.");
       try (InputStream in = connection.getInputStream()) {
-        if (copyLimited(in, out, limit) != length && length >= 0) throw new IOException("Incomplete download.");
+        long received = copyLimited(in, out, limit);
+        if (length >= 0 && received != length) throw new IOException("Incomplete download.");
       }
     } finally {
       connection.disconnect();
@@ -163,18 +167,81 @@ final class DatabaseInstaller {
     if (!original.isRegularFile()) throw new IOException("The database target is not a regular file.");
     var posix = Files.getFileAttributeView(candidate, PosixFileAttributeView.class);
     if (posix != null) {
+      boolean linux = System.getProperty("os.name").equals("Linux");
+      if (linux) {
+        for (String cp : new String[]{"/usr/bin/cp", "/bin/cp"}) {
+          Path command = Path.of(cp);
+          if (Files.isExecutable(command) && !command.toRealPath().endsWith("busybox") && !command.toRealPath().endsWith("toybox")) {
+            runTool(null, null, cp, "--attributes-only", "--preserve=mode,ownership", "--",
+                target.toAbsolutePath().toString(), candidate.toAbsolutePath().toString());
+            return;
+          }
+        }
+      }
       var old = Files.readAttributes(target, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
       var current = posix.readAttributes();
       if (!old.group().equals(current.group())) posix.setGroup(old.group());
       if (!old.owner().equals(current.owner())) posix.setOwner(old.owner());
       posix.setPermissions(old.permissions());
+      if (linux) {
+        String rules = runTool(null, null, "/usr/bin/getfacl", "-cpn", "--", target.toAbsolutePath().toString());
+        runTool(null, rules, "/usr/bin/setfacl", "--set-file=-", "--", candidate.toAbsolutePath().toString());
+        if (!rules.equals(runTool(null, null, "/usr/bin/getfacl", "-cpn", "--", candidate.toAbsolutePath().toString()))) {
+          throw new IOException("Cannot preserve database permissions.");
+        }
+      } else if (System.getProperty("os.name").equals("Mac OS X")) {
+        copyMacAcl(target, candidate);
+      } else {
+        throw new IOException("Cannot preserve database permissions on this filesystem.");
+      }
     } else {
       var acl = Files.getFileAttributeView(candidate, AclFileAttributeView.class);
-      if (acl != null) {
-        var old = Files.getFileAttributeView(target, AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
-        if (!old.getOwner().equals(acl.getOwner())) acl.setOwner(old.getOwner());
-        acl.setAcl(old.getAcl());
+      if (acl == null) throw new IOException("Cannot preserve database permissions.");
+      var old = Files.getFileAttributeView(target, AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+      if (!old.getOwner().equals(acl.getOwner())) acl.setOwner(old.getOwner());
+      acl.setAcl(old.getAcl());
+    }
+  }
+
+  private static void copyMacAcl(Path source, Path candidate) throws IOException {
+    List<String> entries = macAcl(source);
+    if (entries.equals(macAcl(candidate))) return;
+    var input = new StringBuilder();
+    for (String entry : entries) {
+      var rule = MAC_ACL.matcher(entry);
+      if (!rule.matches()) throw new IOException("Unrecognized database access rule.");
+      input.append(rule.group(1)).append(':').append(rule.group(3)).append(':').append(rule.group(4));
+      if (rule.group(2) != null) input.append(",inherited");
+      input.append('\n');
+    }
+    runTool(candidate.getParent(), input.toString(), "/bin/chmod", entries.isEmpty() ? "-N" : "-E", "./" + DATABASE);
+    if (!entries.equals(macAcl(candidate))) throw new IOException("Cannot preserve database permissions.");
+  }
+
+  private static List<String> macAcl(Path path) throws IOException {
+    return runTool(path.getParent(), null, "/bin/ls", "-lde", "./" + DATABASE).lines().skip(1).toList();
+  }
+
+  private static String runTool(Path directory, String input, String... command) throws IOException {
+    var builder = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD);
+    if (directory != null) builder.directory(directory.toFile());
+    builder.environment().put("LC_ALL", "C");
+    Process child = builder.start();
+    try {
+      try (var stdin = child.getOutputStream()) {
+        if (input != null) stdin.write(input.getBytes(StandardCharsets.UTF_8));
       }
+      String output;
+      try (var stdout = child.getInputStream()) {
+        output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
+      }
+      if (child.waitFor() != 0) throw new IOException("Cannot preserve database permissions.");
+      return output;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Database update interrupted.", e);
+    } finally {
+      child.destroyForcibly();
     }
   }
 }
